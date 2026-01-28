@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한큐AI 단어 테스트</title>
+    <style>
+        /* 네가 디자인 전문가니 CSS는 기본만 잡았다. */
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #4a90e2; margin-bottom: 20px; font-size: 1.5rem; }
+        .word-display {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 30px 0;
+            color: #2c3e50;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        button {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+            color: #555;
+        }
+        button:hover { background-color: #e0e0e0; }
+        button.correct { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        button.wrong { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        
+        .hidden { display: none; }
+        #score-board { font-size: 1.2rem; font-weight: bold; color: #4a90e2; }
+        .progress { margin-top: 10px; font-size: 0.9rem; color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="start-screen">
+    <h1>오늘의 영단어 테스트</h1>
+    <p>총 <span id="total-count">0</span>개의 단어가 준비되었습니다.</p>
+    <button onclick="startQuiz()" style="width:100%; background-color: #4a90e2; color: white;">시작하기</button>
+</div>
+
+<div class="container hidden" id="quiz-screen">
+    <div class="progress"><span id="current-index">1</span> / <span id="quiz-total">10</span></div>
+    <div class="word-display" id="question-word">Loading...</div>
+    <div class="options-grid" id="options-container">
+        </div>
+</div>
+
+<div class="container hidden" id="result-screen">
+    <h1>테스트 종료!</h1>
+    <p>당신의 점수는?</p>
+    <div id="score-board">0점</div>
+    <br>
+    <button onclick="location.reload()" style="width:100%; background-color: #4a90e2; color: white;">다시 도전하기</button>
+</div>
+
+<script>
+    // [중요] 여기에 1단계에서 복사한 구글 시트 CSV 링크를 넣어야 해.
+    // 반드시 'pub?output=csv' 로 끝나는 주소여야 한다.
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTArnI2uGlqPVc9uJVFehizzbR7pFqUPF0HRSft86WRB_U7VcFkmYiIDiZWw7HVNSRgTvDEw36qgLyt/pub?gid=0&single=true&output=csv'; 
+
+    let allData = [];
+    let currentQuestions = [];
+    let currentStep = 0;
+    let score = 0;
+
+    // 1. 데이터 로드 (시작하자마자 실행)
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL);
+            const text = await response.text();
+            allData = parseCSV(text);
+            document.getElementById('total-count').innerText = allData.length;
+        } catch (error) {
+            alert("데이터를 불러오는데 실패했어. 링크를 확인해봐.\n" + error);
+        }
+    }
+
+    // 간단한 CSV 파서 (라이브러리 없이 구현)
+    function parseCSV(text) {
+        const lines = text.split('\n');
+        const result = [];
+        // 첫 줄(헤더)은 건너뛰고 1부터 시작
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line) {
+                // 콤마로 분리하되, 따옴표 안의 콤마는 무시하는 정규식 사용 권장되나
+                // 여기선 간단하게 split으로 처리 (단어에 콤마 넣지 마라)
+                const parts = line.split(',');
+                if(parts.length >= 2) {
+                    result.push({ word: parts[0].trim(), meaning: parts[1].trim() });
+                }
+            }
+        }
+        return result;
+    }
+
+    // 2. 퀴즈 시작
+    function startQuiz() {
+        if (allData.length < 4) {
+            alert("단어가 너무 적어. 구글 시트에 단어를 최소 4개 이상 넣어줘.");
+            return;
+        }
+        // 전체 데이터를 섞어서 문제 생성
+        currentQuestions = [...allData].sort(() => Math.random() - 0.5);
+        currentStep = 0;
+        score = 0;
+        
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        document.getElementById('quiz-total').innerText = currentQuestions.length;
+        
+        showQuestion();
+    }
+
+    // 3. 문제 표시 (핵심 로직)
+    function showQuestion() {
+        if (currentStep >= currentQuestions.length) {
+            showResult();
+            return;
+        }
+
+        const item = currentQuestions[currentStep];
+        document.getElementById('current-index').innerText = currentStep + 1;
+        document.getElementById('question-word').innerText = item.word;
+
+        // 정답 1개 + 오답 3개 추출
+        let options = [item];
+        while (options.length < 4) {
+            const randomItem = allData[Math.floor(Math.random() * allData.length)];
+            // 중복된 보기 방지
+            if (!options.includes(randomItem)) {
+                options.push(randomItem);
+            }
+        }
+
+        // 보기 섞기
+        options.sort(() => Math.random() - 0.5);
+
+        // 버튼 렌더링
+        const container = document.getElementById('options-container');
+        container.innerHTML = ''; // 초기화
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.innerText = opt.meaning;
+            btn.onclick = () => checkAnswer(opt, item, btn);
+            container.appendChild(btn);
+        });
+    }
+
+    // 4. 정답 확인
+    function checkAnswer(selected, correct, btnElement) {
+        // 모든 버튼 비활성화 (중복 클릭 방지)
+        const buttons = document.querySelectorAll('.options-grid button');
+        buttons.forEach(b => b.disabled = true);
+
+        if (selected === correct) {
+            btnElement.classList.add('correct');
+            score++;
+        } else {
+            btnElement.classList.add('wrong');
+            // 정답 버튼도 보여주기
+            buttons.forEach(b => {
+                if (b.innerText === correct.meaning) b.classList.add('correct');
+            });
+        }
+
+        // 1초 뒤 다음 문제로
+        setTimeout(() => {
+            currentStep++;
+            showQuestion();
+        }, 1000);
+    }
+
+    // 5. 결과 화면
+    function showResult() {
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('score-board').innerText = 
+            `${score} / ${currentQuestions.length} 점`;
+    }
+
+    // 초기 실행
+    loadData();
+</script>
+
+</body>
+</html>
