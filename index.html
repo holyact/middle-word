@@ -160,16 +160,35 @@
         showQuestion();
     }
 
-    // [핵심 추가 기능] TTS 음성 출력 함수
+    // [수정된 함수] 목소리 강제 로딩 및 찾기
     function speakCurrentWord() {
-        const word = currentQuestions[currentStep].word;
+        // 읽을 단어 가져오기
+        const item = currentQuestions[currentStep];
+        if (!item) return; // 데이터가 없으면 중단
+        const word = item.word;
         
-        // 브라우저의 말하기 기능 호출
+        // 1. 말하기 도구 준비
         const utterance = new SpeechSynthesisUtterance(word);
-        utterance.lang = 'en-US'; // 영어로 설정 (한국어 설정 시 콩글리쉬 발음 주의)
-        utterance.rate = 0.8;     // 속도 (1이 기본, 0.8은 약간 천천히)
         
-        // 기존에 말하고 있던 게 있다면 취소하고 새로 말하기
+        // 2. 브라우저에 설치된 목소리 리스트 가져오기
+        const voices = window.speechSynthesis.getVoices();
+        
+        // 3. 영어 목소리 찾기 (Google, Apple, Microsoft 등 이름에 English가 들어간 녀석 찾기)
+        // 안드로이드/iOS 호환성을 위해 여러 조건을 검사
+        const enVoice = voices.find(v => v.lang.includes('en-US')) || 
+                        voices.find(v => v.lang.includes('en_US')) || 
+                        voices.find(v => v.lang.includes('en'));
+
+        // 4. 목소리가 찾아졌으면 그걸로 설정, 없으면 기본값 사용
+        if (enVoice) {
+            utterance.voice = enVoice;
+            utterance.lang = 'en-US'; 
+        }
+
+        utterance.rate = 0.8; // 속도
+        utterance.volume = 1; // 볼륨 (0~1)
+
+        // 5. 말하기 실행 (기존 대기열 취소 후 실행)
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
     }
@@ -237,9 +256,11 @@
         document.getElementById('score-board').innerText = 
             `${score} / ${currentQuestions.length} 점`;
     }
-
+    // 브라우저가 목소리를 비동기로 가져오기 때문에 강제로 한 번 호출해서 준비시킴
+    window.speechSynthesis.getVoices();
     loadData();
 </script>
 
 </body>
 </html>
+
