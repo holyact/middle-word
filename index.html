@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한큐AI 영어 학습 센터</title>
+    <style>
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #2c3e50; margin-bottom: 10px; font-size: 1.8rem; }
+        p.subtitle { color: #888; margin-bottom: 40px; }
+        .menu-btn {
+            display: block;
+            width: 100%; 
+            box-sizing: border-box; 
+            padding: 20px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: white;
+        }
+        .menu-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
+        .btn-word { background: linear-gradient(135deg, #4a90e2, #007aff); }
+        .btn-sentence { background: linear-gradient(135deg, #66d2a4, #42b983); }
+        .footer { margin-top: 30px; font-size: 0.8rem; color: #ccc; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>한큐AI 영어 학습</h1>
+    <p class="subtitle">오늘의 학습 메뉴를 선택하세요</p>
+
+    <a href="word.html" class="menu-btn btn-word">
+        📘 영단어 트레이닝
+    </a>
+
+    <a href="sentence.html" class="menu-btn btn-sentence">
+        🧩 문장 구조 연습
+    </a>
+
+    <div class="footer">Songchon English Academy</div>
+</div>
+
+</body>
+</html>
