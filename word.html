@@ -23,12 +23,13 @@
             border-radius: 15px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             text-align: center;
-            /* 내용이 많아지면 스크롤 되도록 설정 */
+            /* 오답 리스트가 길어지면 스크롤 생기게 설정 */
             max-height: 90vh;
             overflow-y: auto;
         }
         h1 { color: #4a90e2; margin-bottom: 20px; font-size: 1.5rem; }
         
+        /* 단어 표시 영역 */
         .word-area {
             display: flex;
             align-items: center;
@@ -95,7 +96,7 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* [추가] 오답 리스트 스타일 */
+        /* [핵심] 오답 리스트 스타일 */
         .review-list {
             text-align: left;
             margin-top: 20px;
@@ -109,7 +110,9 @@
             border-radius: 8px;
             border-left: 4px solid #ff6b6b;
             font-size: 0.95rem;
+            cursor: pointer; /* 클릭 가능 표시 */
         }
+        .review-item:hover { background-color: #ffe0e0; }
         .review-word { font-weight: bold; color: #c0392b; }
         .review-meaning { color: #555; margin-left: 5px; }
         .perfect-score { color: #28a745; font-weight: bold; margin-top: 20px; }
@@ -152,14 +155,14 @@
 </div>
 
 <script>
-    // [중요] CSV 링크 확인 필수
+    // [중요] 네 단어장 CSV 주소를 여기에 넣어야 함
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTArnI2uGlqPVc9uJVFehizzbR7pFqUPF0HRSft86WRB_U7VcFkmYiIDiZWw7HVNSRgTvDEw36qgLyt/pub?gid=0&single=true&output=csv'; 
 
     let allData = [];
     let currentQuestions = [];
     let currentStep = 0;
     let score = 0;
-    let wrongAnswers = []; // [추가] 틀린 단어 저장용 배열
+    let wrongAnswers = []; // 틀린 단어 저장소
 
     async function loadData() {
         try {
@@ -266,7 +269,7 @@
             score++;
         } else {
             btnElement.classList.add('wrong');
-            // [추가] 틀린 단어 기록
+            // [핵심] 틀린 경우 리스트에 추가
             wrongAnswers.push(correct);
             
             buttons.forEach(b => {
@@ -277,7 +280,7 @@
         setTimeout(() => {
             currentStep++;
             showQuestion();
-        }, 1200); // 학생들이 정답 확인할 시간 0.2초 늘림
+        }, 1200); 
     }
 
     function showResult() {
@@ -287,7 +290,7 @@
         const scoreText = document.getElementById('score-board');
         scoreText.innerText = `${score} / ${currentQuestions.length} 점`;
 
-        // [추가] 오답 리스트 생성 로직
+        // 오답 리스트 생성 로직
         const container = document.getElementById('wrong-answers-container');
         container.innerHTML = ''; // 초기화
 
@@ -307,7 +310,7 @@
                 const div = document.createElement('div');
                 div.className = 'review-item';
                 div.innerHTML = `<span class="review-word">${item.word}</span> : <span class="review-meaning">${item.meaning}</span>`;
-                // 클릭하면 다시 읽어주기 기능 추가 (선택사항)
+                // 클릭 시 발음 재생
                 div.onclick = () => {
                     const utterance = new SpeechSynthesisUtterance(item.word);
                     utterance.lang = 'en-US';
@@ -319,7 +322,6 @@
         }
     }
     
-    // 초기 실행
     window.speechSynthesis.getVoices();
     loadData();
 </script>
