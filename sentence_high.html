@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한큐AI 문장 배열 연습</title>
+    <style>
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+        .container {
+            background: white;
+            width: 95%;
+            max-width: 600px;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #4a90e2; font-size: 1.2rem; margin-top: 0;}
+        
+        .meaning-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #2c3e50;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 정답이 들어갈 공간 */
+        .answer-area {
+            min-height: 60px;
+            border-bottom: 2px solid #4a90e2;
+            padding: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            background-color: #f8fbff;
+            border-radius: 8px 8px 0 0;
+        }
+
+        /* 보기 단어들이 있는 공간 */
+        .source-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .word-btn {
+            padding: 10px 16px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
+        }
+        .word-btn:active { transform: scale(0.95); }
+        .word-btn.used { 
+            background-color: #e0e0e0; 
+            color: #aaa; 
+            border-color: #e0e0e0;
+            pointer-events: none; /* 클릭 불가 */
+        }
+
+        /* 정답 영역에 들어간 단어 스타일 */
+        .answer-btn {
+            padding: 10px 16px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .hidden { display: none; }
+        
+        button.control-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button.check-btn { background-color: #28a745; }
+        button.retry-btn { background-color: #dc3545; }
+
+        #feedback { margin-top: 15px; font-weight: bold; height: 20px; }
+        .correct-msg { color: #28a745; }
+        .wrong-msg { color: #dc3545; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="start-screen">
+    <h1>영어 문장 배열 트레이닝</h1>
+    <p>총 <span id="total-count">0</span>개의 문장이 로드됨</p>
+    <button class="control-btn" onclick="startQuiz()">시작하기</button>
+</div>
+
+<div class="container hidden" id="quiz-screen">
+    <div style="font-size: 0.9rem; color:#888;">Progress: <span id="current-index">1</span> / <span id="quiz-total">10</span></div>
+    
+    <div class="meaning-display" id="question-meaning"></div>
+
+    <div class="answer-area" id="answer-container">
+        <span style="color:#ccc; font-size:0.9rem; line-height: 60px;">단어를 순서대로 누르세요</span>
+    </div>
+
+    <div class="source-area" id="source-container"></div>
+
+    <div id="feedback"></div>
+
+    <div style="display:flex; gap:10px; justify-content: center;">
+        <button class="control-btn retry-btn hidden" id="reset-btn" onclick="resetCurrentStep()">다시하기</button>
+        <button class="control-btn check-btn" id="check-btn" onclick="checkAnswer()">정답확인</button>
+        <button class="control-btn hidden" id="next-btn" onclick="nextQuestion()">다음문제 >></button>
+    </div>
+</div>
+
+<div class="container hidden" id="result-screen">
+    <h1>Training Complete!</h1>
+    <div style="font-size: 2rem; margin: 20px;">🎉</div>
+    <button class="control-btn" onclick="location.reload()">처음으로</button>
+</div>
+
+<script>
+    // [중요] 여기에 '문장용 시트'의 CSV 링크를 넣어야 한다.
+    // 기존 단어장 링크랑 헷갈리지 마라.
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTArnI2uGlqPVc9uJVFehizzbR7pFqUPF0HRSft86WRB_U7VcFkmYiIDiZWw7HVNSRgTvDEw36qgLyt/pub?gid=994580244&single=true&output=csv';
+
+    let allData = [];
+    let currentQuestions = [];
+    let currentStep = 0;
+    
+    let currentSentenceWords = []; // 정답 단어 배열
+    let userSelectedWords = [];    // 유저가 선택한 단어 배열
+
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL);
+            const text = await response.text();
+            allData = parseCSV(text);
+            document.getElementById('total-count').innerText = allData.length;
+        } catch (error) {
+            alert("데이터 로드 실패. 링크 확인 요망.\n" + error);
+        }
+    }
+
+    function parseCSV(text) {
+        const lines = text.split('\n');
+        const result = [];
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line) {
+                // 문장 안에 쉼표가 있을 수 있으므로, 단순 split보다는 첫번째 콤마 기준 분리가 안전함
+                const firstCommaIndex = line.indexOf(',');
+                if (firstCommaIndex > -1) {
+                    const eng = line.substring(0, firstCommaIndex).trim();
+                    const kor = line.substring(firstCommaIndex + 1).trim();
+                    // CSV 특성상 따옴표 제거 (간단 버전)
+                    const cleanEng = eng.replace(/^"|"$/g, '');
+                    const cleanKor = kor.replace(/^"|"$/g, '');
+                    if(cleanEng && cleanKor) result.push({ eng: cleanEng, kor: cleanKor });
+                }
+            }
+        }
+        return result;
+    }
+
+    function startQuiz() {
+        if (allData.length === 0) {
+            alert("데이터가 없습니다.");
+            return;
+        }
+        currentQuestions = [...allData].sort(() => Math.random() - 0.5); // 랜덤 섞기
+        currentStep = 0;
+        
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        document.getElementById('quiz-total').innerText = currentQuestions.length;
+        
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        const item = currentQuestions[currentStep];
+        document.getElementById('current-index').innerText = currentStep + 1;
+        document.getElementById('question-meaning').innerText = item.kor;
+        document.getElementById('feedback').innerText = "";
+        
+        // 버튼 상태 초기화
+        document.getElementById('check-btn').classList.remove('hidden');
+        document.getElementById('next-btn').classList.add('hidden');
+        document.getElementById('reset-btn').classList.remove('hidden');
+
+        // 문장 분해 (띄어쓰기 기준)
+        currentSentenceWords = item.eng.split(/\s+/); 
+        userSelectedWords = [];
+
+        renderSourceButtons();
+        renderAnswerZone();
+    }
+
+    function renderSourceButtons() {
+        const sourceContainer = document.getElementById('source-container');
+        sourceContainer.innerHTML = '';
+
+        // 단어 섞어서 보여주기 (원본 순서 유출 방지)
+        // 객체 형태로 만들어서 id를 부여해야 같은 단어(예: the, the)를 구분 가능
+        let shuffled = currentSentenceWords.map((word, idx) => ({ word, id: idx }));
+        
+        // 이미 선택된 단어는 제외하고 렌더링하는게 아니라, 
+        // 화면에는 그대로 두되 '비활성화(used)' 스타일을 적용하는 방식
+        shuffled.sort(() => Math.random() - 0.5);
+
+        shuffled.forEach(obj => {
+            const btn = document.createElement('button');
+            btn.className = 'word-btn';
+            btn.innerText = obj.word;
+            
+            // 이미 유저가 선택한 목록에 이 id가 있는지 확인
+            if (userSelectedWords.some(u => u.id === obj.id)) {
+                btn.classList.add('used');
+            }
+
+            btn.onclick = () => {
+                userSelectedWords.push(obj);
+                renderAnswerZone();
+                renderSourceButtons(); // 소스 영역 다시 그리기 (버튼 비활성화 위해)
+            };
+            sourceContainer.appendChild(btn);
+        });
+    }
+
+    function renderAnswerZone() {
+        const answerContainer = document.getElementById('answer-container');
+        answerContainer.innerHTML = '';
+
+        if (userSelectedWords.length === 0) {
+            answerContainer.innerHTML = '<span style="color:#ccc; font-size:0.9rem; line-height: 60px;">단어를 순서대로 누르세요</span>';
+            return;
+        }
+
+        userSelectedWords.forEach((obj, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'answer-btn';
+            btn.innerText = obj.word;
+            // 정답 영역 단어 클릭 시 다시 취소(되돌리기)
+            btn.onclick = () => {
+                userSelectedWords.splice(index, 1);
+                renderAnswerZone();
+                renderSourceButtons();
+            };
+            answerContainer.appendChild(btn);
+        });
+    }
+
+    function resetCurrentStep() {
+        userSelectedWords = [];
+        renderAnswerZone();
+        renderSourceButtons();
+        document.getElementById('feedback').innerText = "";
+    }
+
+    function checkAnswer() {
+        // 유저가 만든 문장
+        const userSentence = userSelectedWords.map(u => u.word).join(' ');
+        // 원본 문장
+        const correctSentence = currentSentenceWords.join(' ');
+
+        const feedback = document.getElementById('feedback');
+
+        if (userSentence === correctSentence) {
+            feedback.innerText = "Correct! 정답입니다.";
+            feedback.className = "correct-msg";
+            document.getElementById('check-btn').classList.add('hidden');
+            document.getElementById('reset-btn').classList.add('hidden');
+            document.getElementById('next-btn').classList.remove('hidden');
+        } else {
+            feedback.innerText = "Try Again. 틀렸습니다.";
+            feedback.className = "wrong-msg";
+        }
+    }
+
+    function nextQuestion() {
+        currentStep++;
+        if (currentStep >= currentQuestions.length) {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+        } else {
+            loadQuestion();
+        }
+    }
+
+    loadData();
+</script>
+
+</body>
+</html>
