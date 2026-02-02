@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한큐AI 단어 테스트</title>
+    <style>
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            /* 오답 리스트가 길어지면 스크롤 생기게 설정 */
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        h1 { color: #4a90e2; margin-bottom: 20px; font-size: 1.5rem; }
+        
+        /* 단어 표시 영역 */
+        .word-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 30px 0;
+        }
+        .word-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .speaker-btn {
+            background: none;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .speaker-btn:hover { background-color: #f0f0f0; border-color: #bbb; }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        button {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+            color: #555;
+        }
+        button:hover { background-color: #e0e0e0; }
+        button.correct { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        button.wrong { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        
+        .hidden { display: none; }
+        #score-board { font-size: 1.5rem; font-weight: bold; color: #4a90e2; margin-bottom: 20px;}
+        .progress { margin-top: 10px; font-size: 0.9rem; color: #888; }
+
+        /* 로딩 스피너 */
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4a90e2;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* [핵심] 오답 리스트 스타일 */
+        .review-list {
+            text-align: left;
+            margin-top: 20px;
+            border-top: 2px solid #eee;
+            padding-top: 15px;
+        }
+        .review-item {
+            background: #fff5f5;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 4px solid #ff6b6b;
+            font-size: 0.95rem;
+            cursor: pointer; /* 클릭 가능 표시 */
+        }
+        .review-item:hover { background-color: #ffe0e0; }
+        .review-word { font-weight: bold; color: #c0392b; }
+        .review-meaning { color: #555; margin-left: 5px; }
+        .perfect-score { color: #28a745; font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="start-screen">
+    <h1>오늘의 영단어 테스트</h1>
+    <div id="loading-area">
+        <div class="loader"></div>
+        <p>데이터를 불러오는 중입니다...</p>
+    </div>
+    <div id="start-content" class="hidden">
+        <p>총 <span id="total-count">0</span>개의 단어가 준비되었습니다.</p>
+        <button onclick="startQuiz()" style="width:100%; background-color: #4a90e2; color: white;">시작하기</button>
+    </div>
+</div>
+
+<div class="container hidden" id="quiz-screen">
+    <div class="progress"><span id="current-index">1</span> / <span id="quiz-total">10</span></div>
+    <div class="word-area">
+        <div class="word-display" id="question-word">Loading...</div>
+        <button class="speaker-btn" onclick="speakCurrentWord()" title="다시 듣기">🔊</button>
+    </div>
+    <div class="options-grid" id="options-container"></div>
+</div>
+
+<div class="container hidden" id="result-screen">
+    <h1>테스트 종료!</h1>
+    <p>당신의 점수는?</p>
+    <div id="score-board">0점</div>
+    
+    <div id="wrong-answers-container"></div>
+
+    <br>
+    <button onclick="location.reload()" style="width:100%; background-color: #4a90e2; color: white;">다시 도전하기</button>
+    <br><br>
+    <button onclick="location.href='index.html'" style="width:100%; background-color: #6c757d; color: white;">메뉴로 나가기</button>
+</div>
+
+<script>
+    // [중요] 네 단어장 CSV 주소를 여기에 넣어야 함
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTArnI2uGlqPVc9uJVFehizzbR7pFqUPF0HRSft86WRB_U7VcFkmYiIDiZWw7HVNSRgTvDEw36qgLyt/pub?gid=219184919&single=true&output=csv'; 
+
+    let allData = [];
+    let currentQuestions = [];
+    let currentStep = 0;
+    let score = 0;
+    let wrongAnswers = []; // 틀린 단어 저장소
+
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL);
+            const text = await response.text();
+            allData = parseCSV(text);
+            document.getElementById('total-count').innerText = allData.length;
+            
+            document.getElementById('loading-area').classList.add('hidden');
+            document.getElementById('start-content').classList.remove('hidden');
+        } catch (error) {
+            alert("데이터 로드 실패.\n" + error);
+        }
+    }
+
+    function parseCSV(text) {
+        const lines = text.split('\n');
+        const result = [];
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line) {
+                const parts = line.split(',');
+                if(parts.length >= 2) {
+                    result.push({ word: parts[0].trim(), meaning: parts[1].trim() });
+                }
+            }
+        }
+        return result;
+    }
+
+    function startQuiz() {
+        if (allData.length < 4) {
+            alert("단어가 너무 적습니다 (최소 4개 필요).");
+            return;
+        }
+        currentQuestions = [...allData].sort(() => Math.random() - 0.5);
+        currentStep = 0;
+        score = 0;
+        wrongAnswers = []; // 초기화
+        
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        document.getElementById('quiz-total').innerText = currentQuestions.length;
+        
+        showQuestion();
+    }
+
+    function speakCurrentWord() {
+        const item = currentQuestions[currentStep];
+        if (!item) return;
+        
+        const utterance = new SpeechSynthesisUtterance(item.word);
+        const voices = window.speechSynthesis.getVoices();
+        const enVoice = voices.find(v => v.lang.includes('en-US')) || voices.find(v => v.lang.includes('en'));
+        
+        if (enVoice) {
+            utterance.voice = enVoice;
+            utterance.lang = 'en-US'; 
+        }
+        utterance.rate = 0.8; 
+        
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function showQuestion() {
+        if (currentStep >= currentQuestions.length) {
+            showResult();
+            return;
+        }
+
+        const item = currentQuestions[currentStep];
+        document.getElementById('current-index').innerText = currentStep + 1;
+        document.getElementById('question-word').innerText = item.word;
+
+        setTimeout(() => speakCurrentWord(), 300);
+
+        let options = [item];
+        while (options.length < 4) {
+            const randomItem = allData[Math.floor(Math.random() * allData.length)];
+            if (!options.includes(randomItem)) {
+                options.push(randomItem);
+            }
+        }
+        options.sort(() => Math.random() - 0.5);
+
+        const container = document.getElementById('options-container');
+        container.innerHTML = ''; 
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.innerText = opt.meaning;
+            btn.onclick = () => checkAnswer(opt, item, btn);
+            container.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selected, correct, btnElement) {
+        const buttons = document.querySelectorAll('.options-grid button');
+        buttons.forEach(b => b.disabled = true);
+
+        if (selected === correct) {
+            btnElement.classList.add('correct');
+            score++;
+        } else {
+            btnElement.classList.add('wrong');
+            // [핵심] 틀린 경우 리스트에 추가
+            wrongAnswers.push(correct);
+            
+            buttons.forEach(b => {
+                if (b.innerText === correct.meaning) b.classList.add('correct');
+            });
+        }
+
+        setTimeout(() => {
+            currentStep++;
+            showQuestion();
+        }, 1200); 
+    }
+
+    function showResult() {
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        
+        const scoreText = document.getElementById('score-board');
+        scoreText.innerText = `${score} / ${currentQuestions.length} 점`;
+
+        // 오답 리스트 생성 로직
+        const container = document.getElementById('wrong-answers-container');
+        container.innerHTML = ''; // 초기화
+
+        if (wrongAnswers.length === 0) {
+            container.innerHTML = '<div class="perfect-score">🎉 완벽합니다! 틀린 문제가 없습니다.</div>';
+        } else {
+            const title = document.createElement('h3');
+            title.innerText = "🚨 틀린 단어 복습";
+            title.style.color = "#e74c3c";
+            title.style.marginTop = "20px";
+            container.appendChild(title);
+
+            const listDiv = document.createElement('div');
+            listDiv.className = 'review-list';
+
+            wrongAnswers.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'review-item';
+                div.innerHTML = `<span class="review-word">${item.word}</span> : <span class="review-meaning">${item.meaning}</span>`;
+                // 클릭 시 발음 재생
+                div.onclick = () => {
+                    const utterance = new SpeechSynthesisUtterance(item.word);
+                    utterance.lang = 'en-US';
+                    window.speechSynthesis.speak(utterance);
+                };
+                listDiv.appendChild(div);
+            });
+            container.appendChild(listDiv);
+        }
+    }
+    
+    window.speechSynthesis.getVoices();
+    loadData();
+</script>
+
+</body>
+</html>
