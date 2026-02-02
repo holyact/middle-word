@@ -11,7 +11,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             color: #333;
         }
@@ -19,47 +19,89 @@
             background: white;
             width: 90%;
             max-width: 400px;
-            padding: 2.5rem;
+            padding: 2rem;
             border-radius: 20px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             text-align: center;
         }
-        h1 { color: #2c3e50; margin-bottom: 10px; font-size: 1.8rem; }
-        p.subtitle { color: #888; margin-bottom: 40px; }
+        h1 { color: #2c3e50; margin-bottom: 5px; font-size: 1.6rem; }
+        p.subtitle { color: #888; margin-bottom: 30px; font-size: 0.9rem; }
+        
+        /* 섹션 구분 스타일 */
+        .section-title {
+            text-align: left;
+            font-size: 0.9rem;
+            color: #aaa;
+            margin: 15px 0 8px 5px;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 버튼 두 개를 나란히 */
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
         .menu-btn {
-            display: block;
-            width: 100%; 
-            box-sizing: border-box; 
-            padding: 20px;
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
             border: none;
             border-radius: 12px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             text-decoration: none;
             color: white;
+            height: 80px; /* 높이 고정 */
         }
         .menu-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
-        .btn-word { background: linear-gradient(135deg, #4a90e2, #007aff); }
-        .btn-sentence { background: linear-gradient(135deg, #66d2a4, #42b983); }
-        .footer { margin-top: 30px; font-size: 0.8rem; color: #ccc; }
+        
+        /* 색상 테마 */
+        .btn-blue { background: linear-gradient(135deg, #4a90e2, #007aff); }
+        .btn-green { background: linear-gradient(135deg, #66d2a4, #42b983); }
+        .btn-purple { background: linear-gradient(135deg, #a55eea, #8854d0); }
+        .btn-orange { background: linear-gradient(135deg, #f7b731, #fa8231); }
+
+        .icon { font-size: 1.5rem; margin-bottom: 5px; }
+        .footer { margin-top: 20px; font-size: 0.7rem; color: #ccc; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>한큐AI 영어 학습</h1>
-    <p class="subtitle">오늘의 학습 메뉴를 선택하세요</p>
+    <h1>한큐AI 학습 센터</h1>
+    <p class="subtitle">반을 선택하여 학습을 시작하세요</p>
 
-    <a href="word.html" class="menu-btn btn-word">
-        📘 영단어 트레이닝
-    </a>
+    <div class="section-title">🌱 중등부 (Middle School)</div>
+    <div class="menu-grid">
+        <a href="word.html" class="menu-btn btn-blue">
+            <span class="icon">📘</span>
+            <span>단어</span>
+        </a>
+        <a href="sentence.html" class="menu-btn btn-green">
+            <span class="icon">🧩</span>
+            <span>문장</span>
+        </a>
+    </div>
 
-    <a href="sentence.html" class="menu-btn btn-sentence">
-        🧩 문장 구조 연습
-    </a>
+    <div class="section-title">🌳 고등부 (High School)</div>
+    <div class="menu-grid">
+        <a href="word_high.html" class="menu-btn btn-purple">
+            <span class="icon">📕</span>
+            <span>단어</span>
+        </a>
+        <a href="sentence_high.html" class="menu-btn btn-orange">
+            <span class="icon">✍️</span>
+            <span>문장</span>
+        </a>
+    </div>
 
     <div class="footer">Songchon English Academy</div>
 </div>
