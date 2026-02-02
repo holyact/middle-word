@@ -184,15 +184,20 @@
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (line) {
+                // 쉼표로 데이터를 자름
                 const parts = line.split(',');
                 if(parts.length >= 2) {
-                    result.push({ word: parts[0].trim(), meaning: parts[1].trim() });
+                    // [핵심 수정] 가져온 데이터 안에 있는 /(슬래시)를 ,(쉼표)로 변환
+                    let cleanWord = parts[0].trim().replace(/\//g, ',');
+                    let cleanMeaning = parts[1].trim().replace(/\//g, ',');
+                    
+                    result.push({ word: cleanWord, meaning: cleanMeaning });
                 }
             }
         }
         return result;
     }
-
+    
     function startQuiz() {
         if (allData.length < 4) {
             alert("단어가 너무 적습니다 (최소 4개 필요).");
